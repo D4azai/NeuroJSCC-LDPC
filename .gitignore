@@ -1,0 +1,25 @@
+# Virtual Environments (Prime Suspect)
+.venv*/
+venv/
+env/
+ENV/
+
+# Data & Model Weights
+data/
+checkpoints/
+*.pth
+*.pt
+*.bin
+*.onnx
+
+# Dataset Zip Files & Archives
+*.zip
+*.rar
+*.tar*
+*.7z
+
+# Python Caches & IDEs
+__pycache__/
+*.pyc
+.idea/
+.vscode/
