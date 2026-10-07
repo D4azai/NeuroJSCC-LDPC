@@ -142,12 +142,80 @@ of the original repository history.
 
 ## Results
 
-No research results are hard-coded. Run the commands above to populate the CSVs
-and figures. Each row records the seed, code, SNR or perturbation, model, metrics,
-parameter count, and graph size. Keep per-seed rows when reporting mean ± standard
-deviation. The correlation script records Pearson and Spearman coefficients and
-sample counts; these are descriptive associations and do not support
-causal claims, especially for a small family of graphs.
+The reference configuration was run with five seeds (`0`–`4`) on the
+`cyclic_24_12` code. Values below are mean ± sample standard deviation. The raw
+per-seed rows, summary CSVs, and generated figures are versioned under `results/`.
+
+### Decoding performance
+
+| Eb/N0 | BP BER | GNN BER | MLP BER | Graph gain |
+|---:|---:|---:|---:|---:|
+| 0 dB | 0.1024 ± 0.0004 | 0.1399 ± 0.0008 | 0.1603 ± 0.0006 | +0.0204 ± 0.0013 |
+| 1 dB | 0.0675 ± 0.0014 | 0.1125 ± 0.0007 | 0.1328 ± 0.0011 | +0.0203 ± 0.0013 |
+| 2 dB | 0.0398 ± 0.0010 | 0.0871 ± 0.0007 | 0.1069 ± 0.0011 | +0.0198 ± 0.0008 |
+| 3 dB | 0.0214 ± 0.0007 | 0.0522 ± 0.0153 | 0.0825 ± 0.0008 | +0.0303 ± 0.0146 |
+| 4 dB | 0.0106 ± 0.0006 | 0.0283 ± 0.0143 | 0.0614 ± 0.0015 | +0.0331 ± 0.0136 |
+
+The GNN had lower BER than the matched MLP in all 25 seed/SNR comparisons.
+Classical normalized min-sum BP remained strongest. GNN variance increased at
+3–4 dB, so the high-SNR gain should be treated as less stable than the 0–2 dB
+result.
+
+![BER versus Eb/N0](results/figures/ber_vs_snr.png)
+
+### Edge reconstructibility
+
+Results aggregate the five seeds and five perturbation levels:
+
+| Negatives | Predictor | ROC-AUC | Average Precision |
+|---|---|---:|---:|
+| Uniform | Logistic regression | 0.4260 ± 0.0703 | 0.4810 ± 0.0480 |
+| Uniform | Small MLP | 0.4903 ± 0.0996 | 0.5418 ± 0.0738 |
+| Hard | Logistic regression | 0.7906 ± 0.0865 | 0.8517 ± 0.0663 |
+| Hard | Small MLP | 0.7569 ± 0.0847 | 0.8026 ± 0.0769 |
+
+The strong scores for the hard-negative condition do not imply general edge
+recovery. Hard-negative selection changes the evaluated pair distribution, while
+the uniform condition remains close to chance. These results reinforce the
+documented limitation of positional attributes on a single deterministic graph
+family.
+
+![Edge reconstructibility](results/figures/edge_reconstructibility.png)
+
+### Structural perturbation
+
+At 2 dB, degree-preserving rewiring produced almost no change in graph gain:
+
+| Requested rewiring | Actual mean rewiring | Graph gain |
+|---:|---:|---:|
+| 0% | 0.0% | +0.01984 ± 0.00083 |
+| 10% | 10.6% | +0.01991 ± 0.00085 |
+| 25% | 26.1% | +0.01986 ± 0.00081 |
+| 50% | 50.3% | +0.01984 ± 0.00086 |
+| Randomized | 78.3% | +0.01983 ± 0.00092 |
+
+This is evidence against claiming that the GNN improvement comes from the
+specific Tanner connectivity in the present setup. The model may benefit from
+generic bipartite message passing, regularization, or another architectural
+difference. A stronger follow-up should include independently constructed codes
+and graph-free baselines matched beyond parameter count.
+
+![Graph gain under perturbation](results/figures/graph_gain_vs_perturbation.png)
+
+### Reconstructibility versus graph gain
+
+Across 25 matched seed/perturbation configurations, all associations were weak:
+
+| Reconstructibility metric | Pearson | Spearman |
+|---|---:|---:|
+| ROC-AUC | -0.044 | -0.143 |
+| Average Precision | +0.098 | -0.062 |
+
+The experiment therefore finds no meaningful association between attribute-only
+edge reconstructibility and the GNN–MLP BER gap. These are descriptive
+correlations from one code family and do not support causal conclusions.
+
+![Reconstructibility versus graph gain](results/figures/reconstructibility_vs_graph_gain.png)
 
 ## Reproducibility and configuration
 
@@ -166,7 +234,7 @@ graph_learning/                                    datasets, MLP, GNN, diagnosti
 experiments/                                       runnable research entry points
 configs/                                           reproducible YAML settings
 tests/                                             scientific sanity checks
-results/figures/                                   generated outputs (ignored)
+results/                                           versioned CSVs and figures
 ```
 
 Run validation with:

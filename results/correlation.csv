@@ -1,0 +1,5 @@
+reconstructibility_metric,correlation,coefficient,n
+roc_auc,pearson,-0.04422920167607594,25
+roc_auc,spearman,-0.1432973912171235,25
+average_precision,pearson,0.098381659121678,25
+average_precision,spearman,-0.06198270435809897,25

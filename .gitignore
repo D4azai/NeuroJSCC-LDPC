@@ -25,11 +25,6 @@ __pycache__/
 .idea/
 .vscode/
 
-# Generated research outputs (reference CSVs/figures are explicitly versioned)
-results/*.csv
-results/*.json
-results/figures/*.png
-
 # Packaging artifacts
 *.egg-info/
 build/
