@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import time
 from dataclasses import dataclass
 
 import torch
@@ -63,6 +64,8 @@ def train_decoder(
     learning_rate: float,
     seed: int,
     device: torch.device,
+    early_stopping_patience: int = 5,
+    progress_label: str = "decoder",
 ) -> nn.Module:
     """Train with a fixed budget and select the lowest validation-loss epoch."""
     model = model.to(device)
@@ -70,8 +73,11 @@ def train_decoder(
     criterion = nn.BCEWithLogitsLoss()
     best_loss = float("inf")
     best_state = copy.deepcopy(model.state_dict())
+    epochs_without_improvement = 0
     loader_generator = torch.Generator().manual_seed(seed)
-    for _ in range(epochs):
+    started = time.perf_counter()
+    report_every = max(1, epochs // 5)
+    for epoch in range(epochs):
         model.train()
         loader = DataLoader(
             train_data, batch_size=batch_size, shuffle=True, generator=loader_generator
@@ -86,6 +92,23 @@ def train_decoder(
         if validation.loss < best_loss:
             best_loss = validation.loss
             best_state = copy.deepcopy(model.state_dict())
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
+        if epoch == 0 or (epoch + 1) % report_every == 0 or epoch + 1 == epochs:
+            elapsed = time.perf_counter() - started
+            print(
+                f"  {progress_label}: epoch {epoch + 1}/{epochs}, "
+                f"validation BCE={validation.loss:.5f}, elapsed={elapsed:.1f}s",
+                flush=True,
+            )
+        if early_stopping_patience > 0 and epochs_without_improvement >= early_stopping_patience:
+            print(
+                f"  {progress_label}: early stopping at epoch {epoch + 1}; "
+                f"best validation BCE={best_loss:.5f}",
+                flush=True,
+            )
+            break
     model.load_state_dict(best_state)
     return model
 

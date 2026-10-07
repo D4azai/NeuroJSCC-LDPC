@@ -20,6 +20,10 @@ def test_mlp_api_has_no_connectivity_and_models_output_bits() -> None:
     snr = torch.full((3, 1), 2.0)
     assert mlp(llr, snr).shape == (3, 12)
     assert gnn(llr, snr, graph).shape == (3, 12)
+    adjacency = gnn._normalized_adjacency(graph.edge_index, graph.num_nodes, torch.float32)
+    source, target = graph.edge_index
+    assert torch.all(adjacency[target, source] > 0)
+    assert torch.allclose(adjacency.sum(dim=1), torch.ones(graph.num_nodes))
 
 
 def test_rewiring_preserves_bipartite_degrees_and_changes_edges() -> None:

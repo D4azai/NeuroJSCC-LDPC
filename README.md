@@ -123,7 +123,9 @@ python -m experiments.reconstructibility_vs_gain
 ```
 
 Each of the first three commands accepts `--smoke` for a fast integration check.
-The full configs use seeds 0–4. Output files are:
+The full configs use seeds 0–4 and print per-epoch progress. The decoding grid
+trains 25 seed/SNR conditions and can take roughly 10–20 minutes on a typical
+CPU; `device: auto` selects CUDA when available. Output files are:
 
 - `results/reconstructibility.csv`
 - `results/reconstructibility_summary.csv`
