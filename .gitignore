@@ -20,6 +20,17 @@ checkpoints/
 
 # Python Caches & IDEs
 __pycache__/
-*.pyc
+*.py[cod]
+.pytest_cache/
 .idea/
 .vscode/
+
+# Generated research outputs (reference CSVs/figures are explicitly versioned)
+results/*.csv
+results/*.json
+results/figures/*.png
+
+# Packaging artifacts
+*.egg-info/
+build/
+dist/
