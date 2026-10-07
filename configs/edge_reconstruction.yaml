@@ -1,0 +1,6 @@
+code: cyclic_24_12
+seeds: [0, 1, 2, 3, 4]
+negative_sampling: [uniform, hard]
+perturbation: [0.0, 0.1, 0.25, 0.5, 1.0]
+output: results/reconstructibility.csv
+figure_directory: results/figures

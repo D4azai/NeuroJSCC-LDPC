@@ -1,0 +1,16 @@
+code: cyclic_24_12
+seeds: [0, 1, 2, 3, 4]
+snr_db: [0.0, 1.0, 2.0, 3.0, 4.0]
+train_size: 4096
+validation_size: 1024
+test_size: 4096
+batch_size: 128
+epochs: 30
+learning_rate: 0.001
+layers: 3
+mlp_hidden_dim: 64
+gnn_hidden_dim: 28
+bp_iterations: 20
+device: cpu
+output: results/decoding.csv
+figure_directory: results/figures
