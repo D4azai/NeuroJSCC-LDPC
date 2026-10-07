@@ -64,35 +64,71 @@ def _average_precision(labels: np.ndarray, scores: np.ndarray) -> float:
     return float(np.mean(cumulative[positive_ranks] / (positive_ranks + 1)))
 
 
-def _fit_torch_classifier(
-    x_train: np.ndarray,
-    y_train: np.ndarray,
-    x_test: np.ndarray,
-    model_name: str,
-    seed: int,
-) -> np.ndarray:
-    torch.manual_seed(seed)
+def _standardize(
+    x_train: np.ndarray, x_test: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
     mean = x_train.mean(axis=0, keepdims=True)
     scale = x_train.std(axis=0, keepdims=True)
     scale[scale < 1e-8] = 1.0
-    train_x = torch.tensor((x_train - mean) / scale, dtype=torch.float32)
+    return (x_train - mean) / scale, (x_test - mean) / scale
+
+
+def _fit_logistic_regression(
+    x_train: np.ndarray,
+    y_train: np.ndarray,
+    x_test: np.ndarray,
+) -> np.ndarray:
+    """Fit L2-regularized logistic regression with deterministic Newton steps."""
+    train, test = _standardize(x_train, x_test)
+    train = np.column_stack((np.ones(len(train)), train))
+    test = np.column_stack((np.ones(len(test)), test))
+    coefficients = np.zeros(train.shape[1], dtype=np.float64)
+    regularization = np.eye(train.shape[1], dtype=np.float64) * 1e-4
+    regularization[0, 0] = 0.0  # Do not penalize the intercept.
+    for _ in range(50):
+        logits = np.clip(train @ coefficients, -30.0, 30.0)
+        probabilities = 1.0 / (1.0 + np.exp(-logits))
+        gradient = train.T @ (probabilities - y_train) + regularization @ coefficients
+        weights = probabilities * (1.0 - probabilities)
+        hessian = train.T @ (train * weights[:, None]) + regularization
+        step = np.linalg.solve(hessian + np.eye(hessian.shape[0]) * 1e-8, gradient)
+        coefficients -= step
+        if np.linalg.norm(step) < 1e-7:
+            break
+    logits = np.clip(test @ coefficients, -30.0, 30.0)
+    return 1.0 / (1.0 + np.exp(-logits))
+
+
+def _fit_small_mlp(
+    x_train: np.ndarray,
+    y_train: np.ndarray,
+    x_test: np.ndarray,
+    seed: int,
+    max_epochs: int,
+) -> np.ndarray:
+    torch.manual_seed(seed)
+    train, test = _standardize(x_train, x_test)
+    train_x = torch.tensor(train, dtype=torch.float32)
     train_y = torch.tensor(y_train, dtype=torch.float32)
-    test_x = torch.tensor((x_test - mean) / scale, dtype=torch.float32)
-    if model_name == "logistic_regression":
-        model: nn.Module = nn.Linear(train_x.shape[1], 1)
-        epochs = 300
-    elif model_name == "small_mlp":
-        model = nn.Sequential(nn.Linear(train_x.shape[1], 32), nn.GELU(), nn.Linear(32, 1))
-        epochs = 500
-    else:
-        raise ValueError(model_name)
+    test_x = torch.tensor(test, dtype=torch.float32)
+    model = nn.Sequential(nn.Linear(train_x.shape[1], 32), nn.GELU(), nn.Linear(32, 1))
     optimizer = torch.optim.Adam(model.parameters(), lr=0.03, weight_decay=1e-4)
     criterion = nn.BCEWithLogitsLoss()
-    for _ in range(epochs):
+    best_loss = float("inf")
+    epochs_without_improvement = 0
+    for _ in range(max_epochs):
         optimizer.zero_grad(set_to_none=True)
         loss = criterion(model(train_x).squeeze(1), train_y)
         loss.backward()
         optimizer.step()
+        current_loss = float(loss.item())
+        if current_loss < best_loss - 1e-5:
+            best_loss = current_loss
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
+        if epochs_without_improvement >= 20:
+            break
     with torch.no_grad():
         return torch.sigmoid(model(test_x).squeeze(1)).numpy()
 
@@ -102,6 +138,7 @@ def evaluate_edge_reconstruction(
     negative_sampling: str = "uniform",
     seed: int = 0,
     test_size: float = 0.3,
+    mlp_max_epochs: int = 200,
 ) -> list[EdgeMetrics]:
     """Evaluate classifiers and similarity scores without structural features."""
     h = np.asarray(h, dtype=np.uint8)
@@ -125,8 +162,11 @@ def evaluate_edge_reconstruction(
     x_train = _pair_features(train_pairs, variable_features, check_features)
     x_test = _pair_features(test_pairs, variable_features, check_features)
     output: list[EdgeMetrics] = []
-    for name in ("logistic_regression", "small_mlp"):
-        scores = _fit_torch_classifier(x_train, y_train, x_test, name, seed)
+    classifier_scores = (
+        ("logistic_regression", _fit_logistic_regression(x_train, y_train, x_test)),
+        ("small_mlp", _fit_small_mlp(x_train, y_train, x_test, seed, mlp_max_epochs)),
+    )
+    for name, scores in classifier_scores:
         output.append(
             EdgeMetrics(
                 name,
