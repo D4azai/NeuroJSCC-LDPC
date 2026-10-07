@@ -6,6 +6,7 @@ from graph_learning.negative_sampling import (
     sample_negative_pairs,
     validate_pair_labels,
 )
+from graph_learning.edge_reconstruction import evaluate_edge_reconstruction
 from ldpc.parity_check import hamming_7_4
 
 
@@ -20,3 +21,13 @@ def test_uniform_and_hard_negatives_are_true_non_edges() -> None:
         negatives = sample_negative_pairs(h, sample_count, strategy, variables, checks, 0)
         validate_pair_labels(h, positives, negatives)
         assert len(np.unique(negatives, axis=0)) == len(negatives)
+
+
+def test_edge_reconstruction_metrics_are_finite_and_deterministic() -> None:
+    h = hamming_7_4()
+    first = evaluate_edge_reconstruction(h, "uniform", seed=2, mlp_max_epochs=20)
+    second = evaluate_edge_reconstruction(h, "uniform", seed=2, mlp_max_epochs=20)
+    assert first == second
+    for result in first:
+        assert 0.0 <= result.roc_auc <= 1.0
+        assert 0.0 <= result.average_precision <= 1.0

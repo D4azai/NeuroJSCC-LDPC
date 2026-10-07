@@ -26,12 +26,29 @@ def main() -> None:
         config["perturbation"] = [0.0, 0.25, 0.5]
     original = make_parity_check(config["code"])
     rows: list[dict] = []
+    total = (
+        len(config["seeds"])
+        * len(config.get("perturbation", [0.0]))
+        * len(config["negative_sampling"])
+    )
+    condition = 0
     for seed in config["seeds"]:
         for requested in config.get("perturbation", [0.0]):
             h = perturb_parity_check(original, float(requested), int(seed))
             actual = edge_change_fraction(original, h)
             for strategy in config["negative_sampling"]:
-                for result in evaluate_edge_reconstruction(h, strategy, int(seed)):
+                condition += 1
+                print(
+                    f"Edge reconstruction {condition}/{total}: seed={seed}, "
+                    f"rewire={float(requested):g}, negatives={strategy}",
+                    flush=True,
+                )
+                for result in evaluate_edge_reconstruction(
+                    h,
+                    strategy,
+                    int(seed),
+                    mlp_max_epochs=int(config.get("mlp_max_epochs", 200)),
+                ):
                     rows.append(
                         {
                             "code": config["code"], "seed": seed,
