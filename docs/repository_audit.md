@@ -26,3 +26,13 @@ per-item reopening of the video file, checkpoint-specific latent dimensions,
 and evaluation scripts that execute at import time. `pytest.ini` confines test
 discovery to the new `tests/` directory so those legacy executable scripts are
 not imported during the research test suite.
+
+## Mainline integration note
+
+The research audit was performed on the `staging` worktree supplied at the start
+of the task. The repository's unrelated `main` history also contained a more
+substantial UCF101 preparation, training, checkpoint-comparison, and evaluation
+workflow. During final integration the research commits were replayed on top of
+`origin/main`, preserving those mainline files. Large datasets and checkpoints
+remain excluded by the mainline `.gitignore`, so they must be supplied locally
+when running the original video experiments.

@@ -23,13 +23,16 @@ runs; the repository contains no fabricated measurements.
 
 ## Existing NeuroJSCC system
 
-The original code encodes 128×128 video frames with a convolutional semantic
-encoder and reconstructs them with a mirrored decoder. The retained JSCC path
+The original mainline encodes video frames with a convolutional semantic encoder
+and reconstructs them with a mirrored decoder. It includes UCF101 preparation,
+training, checkpoint comparison, PSNR/MSE/MAE evaluation, and reconstruction
+visualization scripts. The retained JSCC path
 maps semantic latents to power-normalized real channel symbols, applies a
 differentiable AWGN channel, and recovers the latent before image reconstruction.
-Existing checkpoints, video data, models, and training/evaluation scripts remain
-in place. See [the repository audit](docs/repository_audit.md) for the exact state
-found before this extension.
+Existing models and mainline scripts remain in place. Large datasets and model
+checkpoints stay intentionally unversioned. See
+[the repository audit](docs/repository_audit.md) for the state found before this
+extension and the later mainline integration note.
 
 ```mermaid
 flowchart LR
@@ -65,10 +68,11 @@ global baseline rather than an artificially weak independent-bit classifier.
 
 The GNN receives those same LLR and Eb/N0 observations. Variable nodes carry
 their LLR; check nodes receive a zero in that channel-feature slot. A node-type
-flag distinguishes the bipartition. PyTorch Geometric mean-message-passing layers
-are the sole additional source of information, and predictions are read only at
-variable nodes. Both models use the same codewords, noise realizations, splits,
-seeds, epochs, optimizer family, and validation selection rule.
+flag distinguishes the bipartition. A normalized adjacency derived with PyTorch
+Geometric performs mean message aggregation efficiently across the shared small
+Tanner graph. Connectivity is the sole additional input, and predictions are read
+only at variable nodes. Both models use the same codewords, noise realizations,
+splits, seeds, epochs, optimizer family, and validation selection rule.
 
 Normalized min-sum decoding provides a classical reference. BPSK uses `0 -> +1`
 and `1 -> -1`; the configured SNR values are Eb/N0 and noise variance accounts
@@ -136,9 +140,11 @@ CPU; `device: auto` selects CUDA when available. Output files are:
 - `results/correlation.csv`
 - figures under `results/figures/`
 
-Run the original components with `python main.py`, `python test_jscc.py`, or
-`python -m training.train`. The video and matching checkpoints are already part
-of the original repository history.
+Run the model shape check with `python main.py`. The original UCF101 workflow uses
+`python scripts/prepare_ucf101.py` followed by `python -m training.train` after
+placing the dataset under `data/`. `python test_jscc.py` additionally requires a
+compatible semantic-autoencoder checkpoint under `checkpoints/`; datasets and
+checkpoints are intentionally ignored by Git.
 
 ## Results
 
