@@ -38,7 +38,10 @@ def load_experiment_config(arguments: argparse.Namespace) -> dict:
 
 def run_decoder_comparison(config: dict, perturbation: float = 0.0) -> list[dict]:
     rows: list[dict] = []
-    device = torch.device(config.get("device", "cuda" if torch.cuda.is_available() else "cpu"))
+    configured_device = config.get("device", "auto")
+    if configured_device == "auto":
+        configured_device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = torch.device(configured_device)
     h = make_parity_check(config["code"])
     code = BinaryLinearCode.from_parity_check(h)
     for seed in config["seeds"]:
@@ -69,6 +72,11 @@ def run_decoder_comparison(config: dict, perturbation: float = 0.0) -> list[dict
             models = (("mlp", mlp), ("gnn", gnn))
             metrics_by_model = {}
             for model_name, model in models:
+                label = (
+                    f"seed={seed} Eb/N0={float(snr_db):g}dB "
+                    f"rewire={perturbation:g} {model_name.upper()}"
+                )
+                print(f"Training {label} on {device}", flush=True)
                 trained = train_decoder(
                     model,
                     splits.train,
@@ -79,6 +87,8 @@ def run_decoder_comparison(config: dict, perturbation: float = 0.0) -> list[dict
                     float(config["learning_rate"]),
                     int(seed),
                     device,
+                    int(config.get("early_stopping_patience", 5)),
+                    label,
                 )
                 metrics = evaluate_decoder(
                     trained, splits.test, graph, int(config["batch_size"]), device
